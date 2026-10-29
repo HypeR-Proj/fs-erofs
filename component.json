@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "name": "fs-erofs",
+  "kind": "service",
+  "origin": {
+    "repository": "https://github.com/roolrz/HypeR",
+    "commit": "8d42d047058a2b58a291803700e86487fb723f7a"
+  },
+  "sources": {
+    "Cargo.toml": "svc/fs-erofs/Cargo.toml",
+    "README.md": "svc/fs-erofs/README.md",
+    "component.mk": "svc/fs-erofs/component.mk",
+    "examples/inspect.rs": "svc/fs-erofs/examples/inspect.rs",
+    "src/directory.rs": "svc/fs-erofs/src/directory.rs",
+    "src/inode.rs": "svc/fs-erofs/src/inode.rs",
+    "src/lib.rs": "svc/fs-erofs/src/lib.rs",
+    "src/main.rs": "svc/fs-erofs/src/main.rs",
+    "src/reader.rs": "svc/fs-erofs/src/reader.rs",
+    "src/superblock.rs": "svc/fs-erofs/src/superblock.rs",
+    "src/volume.rs": "svc/fs-erofs/src/volume.rs",
+    "tests/fixtures/README.md": "svc/fs-erofs/tests/fixtures/README.md",
+    "tests/fixtures/core.erofs": "svc/fs-erofs/tests/fixtures/core.erofs",
+    "tests/fixtures/core.erofs.license": "svc/fs-erofs/tests/fixtures/core.erofs.license",
+    "tests/format.rs": "svc/fs-erofs/tests/format.rs"
+  },
+  "SPDX-FileCopyrightText": "2026 roolrz",
+  "SPDX-License-Identifier": "Apache-2.0",
+  "mounts": {
+    "": "svc/fs-erofs"
+  },
+  "packages": [
+    "hyper-fs-erofs-system"
+  ],
+  "tests": [
+    [
+      "make",
+      "app-test",
+      "APP_TEST_PACKAGE=hyper-fs-erofs-system"
+    ]
+  ]
+}
