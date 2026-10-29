@@ -56,8 +56,8 @@ cargo run --manifest-path bootstrap/stage1/Cargo.toml -p hyper-fs-erofs --exampl
 Use the [HypeR workspace](https://github.com/HypeR-Proj/HypeR) to resolve dependencies:
 
 ```sh
-./HypeR/hyper test fs-erofs
+python3 project.py test fs-erofs
 ```
 
-Build paths in detailed documentation refer to the generated `out/system` directory.
+Paths in the documentation are relative to the repo-managed workspace root.
 Edit this repository and prepare the workspace again before building.
