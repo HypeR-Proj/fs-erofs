@@ -1,9 +1,7 @@
 # SPDX-FileCopyrightText: 2026 roolrz
 # SPDX-License-Identifier: Apache-2.0
 
-bin = [
-    { name = "hyper-fs-erofs-system", path = "src/main.rs", test = false, bench = false },
-]
+bin = [{name = "hyper-fs-erofs-system", path = "src/main.rs", test = false, bench = false}]
 
 [package]
 name = "hyper-fs-erofs-system"
@@ -13,27 +11,28 @@ license = "Apache-2.0"
 repository = "https://github.com/HypeR-Proj/fs-erofs"
 publish = false
 autotests = false
+workspace = "../../app"
+
+[dependencies]
 
 [dependencies.hyper-os]
-version = "=0.0.0"
-features = [
-    "std",
-]
+workspace = true
+features = ["std"]
 
 [dependencies.hyper-rt]
-version = "=0.0.0"
-features = [
-    "std",
-]
+workspace = true
+features = ["std"]
 
 [dependencies.hyper-service]
-version = "=0.0.0"
+workspace = true
 
 [dependencies.hyper-filesystem]
-version = "=0.0.0"
+workspace = true
 
 [dependencies.hyper-fs-service]
-version = "=0.0.0"
+workspace = true
+
+[lints]
 
 [lints.clippy]
 doc_markdown = "deny"
@@ -52,15 +51,7 @@ unsafe_op_in_unsafe_fn = "deny"
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = [
-    "cfg(target_os, values(\"hyper\"))",
-]
+check-cfg = ["cfg(target_os, values(\"hyper\"))"]
 
 [lib]
 name = "hyper_fs_erofs"
-
-[workspace]
-members = [
-    ".",
-]
-resolver = "3"
