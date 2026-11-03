@@ -3,7 +3,7 @@
 
 # EROFS media reader
 
-`hyper-erofs` reads immutable EROFS images through a bounded random-read device.
+The `hyper_fs_erofs` library reads immutable EROFS images through a bounded random-read device.
 The Native `fs-erofs` process adapts that interface to its exclusive block-volume
 capability. Generic filesystem RPC, mount publication, and namespace symlink
 resolution remain outside the format reader.
@@ -44,12 +44,32 @@ mutation invalidation while mounted.
 The implementation follows the published [EROFS core disk format](https://erofs.docs.kernel.org/en/latest/ondisk/core_ondisk.html).
 It does not incorporate Linux filesystem implementation code.
 
-Run parser tests with `cargo test --manifest-path bootstrap/stage1/Cargo.toml -p hyper-fs-erofs`.
-The host `inspect` example lists a directory or emits file/link bytes from an image:
+Run the formal parser and worker module tests from the workspace root:
 
 ```sh
-cargo run --manifest-path bootstrap/stage1/Cargo.toml -p hyper-fs-erofs --example inspect -- IMAGE [PATH]
+make test MODULE=fs-erofs
 ```
+
+This selects the `hyper-fs-erofs-system` package in `svc/fs-erofs`, including its
+`hyper_fs_erofs` parser library. It does not select the independent bootstrap copy.
+The host [inspect example](examples/inspect.rs) lists a directory or emits file
+and symlink bytes. From the workspace root, use the local SDK source patches that
+host tests use (these crates are not published on crates.io):
+
+```sh
+CARGO_TARGET_DIR="$PWD/out/erofs-inspect" cargo run --locked \
+  --manifest-path svc/fs-erofs/Cargo.toml -p hyper-fs-erofs-system \
+  --config "patch.crates-io.hyper-abi.path='$PWD/sdk/abi'" \
+  --config "patch.crates-io.hyper-os.path='$PWD/stdlib/rust/hyper-os'" \
+  --config "patch.crates-io.hyper-rt.path='$PWD/stdlib/rust/hyper-rt'" \
+  --config "patch.crates-io.hyper-sys.path='$PWD/stdlib/rust/hyper-sys'" \
+  --config "patch.crates-io.hyper-filesystem.path='$PWD/stdlib/rust/hyper-filesystem'" \
+  --example inspect -- svc/fs-erofs/tests/fixtures/core.erofs hello
+```
+
+The included fixture prints `EROFS reference fixture`. Replace the final image
+and path arguments to inspect another uncompressed EROFS image; omit the path to
+list its root directory. This is a host utility, not a Native executable.
 
 ## Workspace tests
 
