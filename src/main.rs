@@ -56,6 +56,9 @@ impl ReadDevice for Device {
 struct Erofs(hyper_fs_erofs::Volume<Device>);
 
 impl Volume for Erofs {
+    fn writeback_policy(&self) -> hyper_fs_service::WritebackPolicy {
+        hyper_fs_service::WritebackPolicy::ReadOnly
+    }
     fn stat(&mut self, path: &str) -> Result<Entry, Error> {
         metadata(self.0.stat(path).map_err(map_error)?)
     }
