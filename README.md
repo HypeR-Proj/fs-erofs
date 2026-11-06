@@ -4,8 +4,8 @@
 # EROFS media reader
 
 The `hyper_fs_erofs` library reads immutable EROFS images through a bounded random-read device.
-The Native `fs-erofs` process adapts that interface to its exclusive block-volume
-capability. Generic filesystem RPC, mount publication, and namespace symlink
+The Native `fs-erofs` process adapts that interface to a revocable block queue delegated by fs-backend.
+The manager retains the exclusive NativeBlock. Generic filesystem RPC, mount publication, and namespace symlink
 resolution remain outside the format reader.
 
 The supported format is uncompressed EROFS with 512, 1024, 2048, or 4096-byte

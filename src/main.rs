@@ -9,11 +9,32 @@ use hyper_filesystem::{
 };
 use hyper_fs_erofs::{Device as ReadDevice, Error as MediaError, Kind};
 use hyper_fs_service::Volume;
-use hyper_os::block::{BlockQueue, NativeBlock, QueueConfig};
+use hyper_os::block::BlockQueue;
 
 struct Device {
-    block: NativeBlock,
+    queue: BlockQueue,
     bytes: u64,
+}
+
+impl Device {
+    fn read_sectors(&self, first: u64, output: &mut [u8]) -> hyper_os::Result<()> {
+        let ticket = loop {
+            match self.queue.submit_read(first, output.len()) {
+                Ok(ticket) => break ticket,
+                Err(hyper_os::Error::Status(hyper_os::Status::WOULD_BLOCK)) => self
+                    .queue
+                    .wait_space(output.len(), hyper_os::DEADLINE_INFINITE)?,
+                Err(error) => return Err(error),
+            }
+        };
+        self.queue.wait(ticket, hyper_os::DEADLINE_INFINITE)?;
+        let completion = self.queue.reap(ticket, output)?;
+        completion.result()?;
+        if completion.bytes != output.len() {
+            return Err(hyper_os::Error::InvalidResponse);
+        }
+        Ok(())
+    }
 }
 
 impl ReadDevice for Device {
@@ -33,16 +54,14 @@ impl ReadDevice for Device {
         while !output.is_empty() {
             let within = position as usize % sector.len();
             let count = if within != 0 || output.len() < sector.len() {
-                self.block
-                    .read_sectors(position / 512, &mut sector)
+                self.read_sectors(position / 512, &mut sector)
                     .map_err(|_| MediaError::Io)?;
                 let count = output.len().min(sector.len() - within);
                 output[..count].copy_from_slice(&sector[within..within + count]);
                 count
             } else {
                 let count = output.len().min(protocol::DATA_BYTES) / 512 * 512;
-                self.block
-                    .read_sectors(position / 512, &mut output[..count])
+                self.read_sectors(position / 512, &mut output[..count])
                     .map_err(|_| MediaError::Io)?;
                 count
             };
@@ -164,18 +183,10 @@ fn run() -> Result<(), String> {
     if std::env::args().nth(2).as_deref() != Some("ro") {
         return Err("EROFS requires a read-only mount".into());
     }
-    let (block, adopted) = if std::env::args().nth(3).as_deref() == Some("--adopt") {
-        let (block, state) = hyper_fs_service::adopt(&mut startup)?;
-        (block, Some(state))
+    let adopted = if std::env::args().nth(3).as_deref() == Some("--adopt") {
+        Some(hyper_fs_service::adopt(&mut startup)?)
     } else {
-        (
-            NativeBlock::from_handle(
-                startup
-                    .take(hyper_service::filesystem::BLOCK)
-                    .map_err(show)?,
-            ),
-            None,
-        )
+        None
     };
 
     let queue = match adopted.as_ref() {
@@ -186,16 +197,32 @@ fn run() -> Result<(), String> {
                 .duplicate(hyper_service::filesystem::QUEUE_RIGHTS)
                 .map_err(show)?,
         ),
-        None => block.create_queue(QueueConfig::default()).map_err(show)?,
+        None => BlockQueue::from_handle(
+            startup
+                .take(hyper_service::filesystem::QUEUE)
+                .map_err(show)?,
+        ),
     };
 
     let bytes = sectors.checked_mul(512).ok_or("invalid volume geometry")?;
-    let mut volume = Erofs(hyper_fs_erofs::Volume::mount(Device { block, bytes }).map_err(show)?);
+    let mut volume = Erofs(
+        hyper_fs_erofs::Volume::mount(Device {
+            queue: BlockQueue::from_handle(
+                queue
+                    .as_handle_ref()
+                    .duplicate(hyper_service::filesystem::QUEUE_RIGHTS)
+                    .map_err(show)?,
+            ),
+            bytes,
+        })
+        .map_err(show)?,
+    );
     let completion = match adopted {
         Some(state) => hyper_fs_service::resume(state, &mut volume)?,
         None => hyper_fs_service::serve(&mut startup, &mut volume, queue)?,
     };
-    hyper_fs_service::return_block(completion, volume.0.into_device().block)
+    drop(volume.0.into_device());
+    hyper_fs_service::finish(completion)
 }
 
 fn show(error: impl core::fmt::Debug) -> String {
